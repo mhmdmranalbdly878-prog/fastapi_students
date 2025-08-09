@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>لوحة إدارة المدرسة - الطلاب</title>
+  <style>
+    :root {
+      --bg: #0f172a;      /* slate-900 */
+      --panel: #111827;   /* gray-900 */
+      --muted: #94a3b8;   /* slate-400 */
+      --text: #e5e7eb;    /* gray-200 */
+      --brand: #22c55e;   /* green-500 */
+      --brand-600: #16a34a;
+      --danger: #ef4444;  /* red-500 */
+      --warning: #f59e0b; /* amber-500 */
+      --card: #0b1220;    /* deep panel */
+      --border: #243047;  /* subtle */
+    }
+    *{box-sizing:border-box}
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: radial-gradient(1200px 800px at 80% -10%, #1e293b 0%, var(--bg) 50%); color: var(--text); }
+    .container { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+
+    .header { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: 28px; letter-spacing:.3px; }
+    .sub { color: var(--muted); font-size:14px; margin-top:4px }
+
+    .grid { display:grid; grid-template-columns: 1fr; gap:18px; }
+    @media (min-width: 980px){ .grid{ grid-template-columns: 380px 1fr; } }
+
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
+    .card .title { padding: 14px 16px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); font-weight:600; }
+    .card .body { padding: 16px; }
+
+    label{ display:block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+    input{ width:100%; background: var(--card); color: var(--text); border:1px solid var(--border); border-radius:12px; padding: 12px 12px; outline:none; transition: border .15s ease; }
+    input:focus{ border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+
+    .row { display:flex; gap:10px; }
+    .row > * { flex:1 }
+
+    .actions { display:flex; gap:10px; margin-top: 16px; }
+    button { border:0; border-radius: 12px; padding: 10px 14px; font-weight:600; cursor:pointer; }
+    .btn-primary{ background: var(--brand); color: #052e16; }
+    .btn-primary:hover{ background: var(--brand-600); }
+    .btn-muted{ background: #1f2937; color: var(--text); }
+    .btn-danger{ background: var(--danger); color: #fff; }
+    .btn-warning{ background: var(--warning); color: #051b11; }
+
+    .table-wrap{ overflow:auto; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { text-align: right; padding: 12px; border-bottom:1px solid var(--border); }
+    th { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing:.4px; }
+    tbody tr:hover{ background: rgba(255,255,255,.03); }
+
+    .pill { font-size: 12px; background: #0b2d17; color:#86efac; border:1px solid #14532d; padding: 2px 8px; border-radius:999px }
+
+    .toolbar { display:flex; gap:10px; align-items:center; }
+    .search { flex:1 }
+
+    .status { display:flex; align-items:center; gap:10px; }
+    .dot { width:10px; height:10px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(34,197,94,.2) }
+
+    .toast { position: fixed; bottom: 18px; right: 18px; background:#111827; color:var(--text); border:1px solid var(--border); padding: 12px 14px; border-radius: 12px; box-shadow: 0 6px 30px rgba(0,0,0,.3); opacity:0; transform: translateY(10px); transition: .25s ease; }
+    .toast.show { opacity:1; transform: translateY(0); }
+
+    .empty { padding: 24px; text-align:center; color: var(--muted); }
+    .badge { border:1px solid var(--border); padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); }
+    .spinner { width:18px; height:18px; border:3px solid #1f2937; border-top:3px solid #60a5fa; border-radius:50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .footer { margin-top: 14px; color: var(--muted); font-size: 12px; text-align:center }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>لوحة إدارة الطلاب</h1>
+        <div class="sub">اتصال مباشر بواجهة البرمجة (API) لإضافة وتعديل وحذف الطلاب</div>
+      </div>
+      <div class="status" id="status">
+        <div class="dot" aria-hidden="true"></div>
+        <span class="badge">متصل</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Form Card -->
+      <div class="card">
+        <div class="title">نموذج الطالب</div>
+        <div class="body">
+          <form id="student-form">
+            <div class="row">
+              <div>
+                <label for="id">المعرف (ID)</label>
+                <input id="id" name="id" type="number" min="1" step="1" required placeholder="مثال: 3" />
+              </div>
+              <div>
+                <label for="name">الاسم</label>
+                <input id="name" name="name" type="text" required placeholder="مثال: Ahmed Ali" />
+              </div>
+            </div>
+            <div>
+              <label for="grade">الدرجة</label>
+              <input id="grade" name="grade" type="number" step="0.1" min="0" required placeholder="مثال: 9.5" />
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn-primary" id="submit-btn">إضافة الطالب</button>
+              <button type="button" class="btn-muted" id="reset-btn" title="تصفير النموذج">تفريغ</button>
+              <button type="button" class="btn-warning" id="cancel-edit" style="display:none">إلغاء التعديل</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div class="card">
+        <div class="title">
+          <div class="toolbar">
+            <div class="search"><input id="search" placeholder="ابحث بالاسم أو المعرف..." /></div>
+            <button class="btn-muted" id="refresh-btn" title="تحديث القائمة">تحديث</button>
+          </div>
+        </div>
+        <div class="body table-wrap">
+          <table aria-label="قائمة الطلاب">
+            <thead>
+              <tr>
+                <th>المعرف</th>
+                <th>الاسم</th>
+                <th>الدرجة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="4" class="empty"><span class="spinner" style="vertical-align:middle"></span> جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">API: <code>https://fastapi-students-1.onrender.com</code></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // ====== الإعدادات ======
+    const API_BASE = 'https://fastapi-students-1.onrender.com';
+    const endpoints = {
+      list: () => API_BASE + '/students/',
+      create: () => API_BASE + '/students/',
+      update: (id) => API_BASE + '/students/' + encodeURIComponent(id),
+      remove: (id) => API_BASE + '/students/' + encodeURIComponent(id),
+    };
+
+    // ====== عناصر DOM ======
+    const tbody = document.getElementById('tbody');
+    const form = document.getElementById('student-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit');
+    const resetBtn = document.getElementById('reset-btn');
+    const searchInput = document.getElementById('search');
+    const toast = document.getElementById('toast');
+
+    let editingId = null;
+    let cache = [];
+
+    // ====== أدوات عامّة ======
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function withTimeout(ms, promise) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ms);
+      return Promise.race([
+        promise(controller.signal),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('انتهت مهلة الطلب')), ms + 50))
+      ]).finally(() => clearTimeout(timer));
+    }
+
+    async function request(url, options = {}) {
+      return withTimeout(15000, async (signal) => {
+        const res = await fetch(url, { signal, headers: { 'Content-Type': 'application/json' }, ...options });
+        const contentType = res.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await res.json() : await res.text();
+        if (!res.ok) {
+          const msg = typeof data === 'string' ? data : (data?.detail || data?.error || 'خطأ غير معروف');
+          throw new Error(msg);
+        }
+        return data;
+      });
+    }
+
+    function normalizeStudents(data){
+      // يدعم كلا الشكلين: مصفوفة مباشرة أو { students: [...] }
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.students)) return data.students;
+      return [];
+    }
+
+    // ====== عمليات API ======
+    async function fetchStudents() {
+      const data = await request(endpoints.list());
+      cache = normalizeStudents(data).sort((a,b)=> a.id - b.id);
+      render();
+    }
+
+    async function createStudent(student) {
+      return request(endpoints.create(), { method:'POST', body: JSON.stringify(student) });
+    }
+
+    async function updateStudent(id, student) {
+      return request(endpoints.update(id), { method:'PUT', body: JSON.stringify(student) });
+    }
+
+    async function deleteStudent(id) {
+      return request(endpoints.remove(id), { method:'DELETE' });
+    }
+
+    // ====== العرض ======
+    function render(filter = ''){
+      const term = filter.trim().toLowerCase();
+      const rows = (term ? cache.filter(s => String(s.id).includes(term) || (s.name||'').toLowerCase().includes(term)) : cache);
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td class="empty" colspan="4">لا توجد بيانات مطابقة.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(s => `
+        <tr>
+          <td><span class="pill">${escapeHtml(s.id)}</span></td>
+          <td>${escapeHtml(s.name)}</td>
+          <td>${escapeHtml(s.grade)}</td>
+          <td>
+            <button class="btn-muted" data-action="edit" data-id="${s.id}">تعديل</button>
+            <button class="btn-danger" data-action="delete" data-id="${s.id}">حذف</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(v){
+      return String(v == null ? '' : v)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    function fillForm(s){
+      form.id.value = s.id;
+      form.name.value = s.name;
+      form.grade.value = s.grade;
+    }
+
+    function clearForm(){
+      form.reset();
+      editingId = null;
+      submitBtn.textContent = 'إضافة الطالب';
+      cancelEditBtn.style.display = 'none';
+      form.id.disabled = false; // يسمح بتعديل المعرف في حالة الإضافة
+    }
+
+    // ====== الأحداث ======
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const student = {
+        id: Number(form.id.value),
+        name: form.name.value.trim(),
+        grade: Number(form.grade.value)
+      };
+      if (!student.id || !student.name) return showToast('يرجى إدخال البيانات المطلوبة');
+
+      try {
+        if (editingId != null) {
+          await updateStudent(editingId, student);
+          showToast('تم تحديث الطالب بنجاح');
+        } else {
+          await createStudent(student);
+          showToast('تمت إضافة الطالب بنجاح');
+        }
+        await fetchStudents();
+        clearForm();
+      } catch (err) {
+        showToast('خطأ: ' + err.message);
+      }
+    });
+
+    resetBtn.addEventListener('click', () => clearForm());
+
+    cancelEditBtn.addEventListener('click', () => clearForm());
+
+    tbody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      const action = btn.dataset.action;
+      const student = cache.find(s => s.id === id);
+
+      if (action === 'edit' && student) {
+        editingId = id;
+        fillForm(student);
+        submitBtn.textContent = 'تحديث الطالب';
+        cancelEditBtn.style.display = 'inline-block';
+        form.id.disabled = true; // منع تغيير المعرف أثناء التعديل
+      }
+
+      if (action === 'delete') {
+        if (!confirm('تأكيد حذف الطالب #' + id + ' ؟')) return;
+        try {
+          await deleteStudent(id);
+          showToast('تم حذف الطالب');
+          await fetchStudents();
+        } catch (err) {
+          showToast('خطأ: ' + err.message);
+        }
+      }
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', fetchStudents);
+    searchInput.addEventListener('input', () => render(searchInput.value));
+
+    // ====== تشغيل أولي ======
+    (async function init(){
+      try {
+        await fetchStudents();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty">تعذر تحميل البيانات: ${escapeHtml(err.message)}</td></tr>`;
+        document.getElementById('status').innerHTML = '<span class="badge" style="color:#fca5a5;border-color:#b91c1c">غير متصل</span>';
+      }
+    })();
+  </script>
+</body>
+</html>
